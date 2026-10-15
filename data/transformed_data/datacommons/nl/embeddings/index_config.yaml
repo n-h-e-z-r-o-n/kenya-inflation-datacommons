@@ -1,0 +1,5 @@
+embeddings_path: /data/datacommons/nl/embeddings/embeddings.csv
+healthcheck_query: health
+model: ft-final-v20230717230459-all-MiniLM-L6-v2
+source_path: /data/datacommons/nl
+store_type: MEMORY

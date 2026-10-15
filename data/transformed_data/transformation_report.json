@@ -1,0 +1,22 @@
+{
+  "source_csv": "cbk_inflation_extracted.csv",
+  "source_sha256": "66c0c2d4bff7e3e80d51debed0124265b82146a68c13709d6a8d0f61c3b59dac",
+  "source_rows": 142,
+  "distinct_months": 141,
+  "observation_rows": 282,
+  "variable_count": 2,
+  "first_month": "2015-01",
+  "last_month": "2026-09",
+  "identical_duplicate_rows_removed": 1,
+  "duplicate_details": [
+    {
+      "date": "2019-04",
+      "kept_csv_row": 53,
+      "ignored_csv_row": 54,
+      "reason": "Both reported inflation values are identical; retained first occurrence."
+    }
+  ],
+  "missing_months": [],
+  "missing_value_details": [],
+  "load_status": "NOT LOADED: Run the Data Commons Docker data container next."
+}

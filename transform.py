@@ -1,0 +1,223 @@
+"""
+Transform a saved CBK inflation extraction into Data Commons loader inputs.
+
+Usage (from repository root): python transform.py
+Requires only Python 3.10+ standard library.
+"""
+
+from __future__ import annotations
+
+import argparse
+import calendar
+import csv
+import hashlib
+import json
+import re
+from datetime import date
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+DEFAULT_INPUT = ROOT / "data" / "cbk_inflation_extracted.csv"
+DEFAULT_OUTPUT = ROOT / "data/transformed_data"
+SOURCE_URL = "https://www.centralbank.go.ke/inflation-rates/"
+ENTITY = "country/KEN"
+PROVENANCE = "CBK_Inflation_Rates"
+VARIABLES = {
+    "Annual Average Inflation": "cbk/AnnualAverageInflationRate",
+    "12-Month Inflation": "cbk/TwelveMonthInflationRate",
+}
+REQUIRED = ("Year", "Month", "Annual Average Inflation", "12-Month Inflation", "date")
+MISSING = {"", "na", "n/a", "nan", "null", "none", "-", ".."}
+MONTHS = {name.lower(): n for n, name in enumerate(calendar.month_name) if name}
+MONTHS.update({name.lower(): n for n, name in enumerate(calendar.month_abbr) if name})
+MONTHS["sept"] = 9
+
+
+def parse_number(text: str, column: str, line: int) -> Decimal | None:
+    raw = text.strip()
+    if raw.lower() in MISSING:
+        return None
+    try:
+        number = Decimal(raw)
+    except InvalidOperation as exc:
+        raise ValueError(f"Row {line}: unexpected {column} value {raw!r}; check footnotes.") from exc
+    if not number.is_finite():
+        raise ValueError(f"Row {line}: invalid non-finite {column} value {raw!r}")
+    return number
+
+
+def parse_source(input_path: Path):
+    if not input_path.is_file():
+        raise FileNotFoundError(f"Cannot find source CSV: {input_path}")
+    source_bytes = input_path.read_bytes()
+    with input_path.open(encoding="utf-8-sig", newline="") as fh:
+        reader = csv.DictReader(fh)
+        if not reader.fieldnames or not set(REQUIRED).issubset(reader.fieldnames):
+            raise ValueError(f"Expected CSV columns: {', '.join(REQUIRED)}")
+        if len(set(reader.fieldnames)) != len(reader.fieldnames):
+            raise ValueError("CSV contains duplicate column headings")
+        records = []
+        for line, row in enumerate(reader, start=2):
+            if None in row:
+                raise ValueError(f"Row {line}: too many CSV fields")
+            if all(not str(v or "").strip() for v in row.values()):
+                raise ValueError(f"Row {line}: unexpected empty row")
+            year_string = (row["Year"] or "").strip()
+            month = (row["Month"] or "").strip().lower().rstrip(".")
+            date_string = (row["date"] or "").strip()
+            if not re.fullmatch(r"\d{4}", year_string) or month not in MONTHS:
+                raise ValueError(f"Row {line}: invalid year or month")
+            year = int(year_string)
+            expected = f"{year:04d}-{MONTHS[month]:02d}"
+            if date_string != expected:
+                raise ValueError(f"Row {line}: date {date_string!r} disagrees with Year/Month ({expected})")
+            if year < 2015:
+                raise ValueError(f"Row {line}: data before January 2015 is outside the assignment scope")
+            if year > date.today().year + 1:
+                raise ValueError(f"Row {line}: unexpected future year")
+            values = {name: parse_number(row[name] or "", name, line) for name in VARIABLES}
+            records.append({"line": line, "date": expected, "values": values})
+    if not records:
+        raise ValueError("CSV contains no observations")
+    return records, hashlib.sha256(source_bytes).hexdigest()
+
+
+def validate_and_deduplicate(records):
+    kept = {}
+    duplicate_log = []
+    for rec in records:
+        month = rec["date"]
+        previous = kept.get(month)
+        if previous is None:
+            kept[month] = rec
+            continue
+        if previous["values"] != rec["values"]:
+            raise ValueError(
+                f"Conflicting source observations for {month} (CSV rows "
+                f"{previous['line']} and {rec['line']}). Resolve using saved CBK HTML."
+            )
+        duplicate_log.append({
+            "date": month,
+            "kept_csv_row": previous["line"],
+            "ignored_csv_row": rec["line"],
+            "reason": "Both reported inflation values are identical; retained first occurrence."
+        })
+
+    start = (2015, 1)
+    year, month = start
+    latest = max(kept)
+    missing_months = []
+    while f"{year:04d}-{month:02d}" <= latest:
+        current = f"{year:04d}-{month:02d}"
+        if current not in kept:
+            missing_months.append(current)
+        month += 1
+        if month == 13:
+            year, month = year + 1, 1
+    return kept, duplicate_log, missing_months
+
+
+def write_json(path: Path, data):
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def generate(input_path: Path = DEFAULT_INPUT, output_dir: Path = DEFAULT_OUTPUT):
+    records, sha256 = parse_source(input_path)
+    kept, duplicate_log, missing_months = validate_and_deduplicate(records)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    observations = []
+    missing_values = []
+    for month in sorted(kept):
+        rec = kept[month]
+        for col, dcid in VARIABLES.items():
+            value = rec["values"][col]
+            if value is None:
+                missing_values.append({"date": month, "variable": dcid, "source_csv_row": rec["line"]})
+                continue
+            observations.append({
+                "entity": ENTITY,
+                "variable": dcid,
+                "date": month,
+                "value": str(value),
+                "unit": "Percent",
+            })
+
+    # An exact filename prevents the loader from also importing audit/source CSVs.
+    with (output_dir / "observations.csv").open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["entity", "variable", "date", "value", "unit"], lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(observations)
+
+    config = {
+        "inputFiles": {
+            "observations.csv": {
+                "format": "variablePerRow",
+                "importType": "observations",
+                "entityType": "Country",
+                "provenance": PROVENANCE,
+            }
+        },
+        "sources": {
+            "Central Bank of Kenya": {
+                "url": "https://www.centralbank.go.ke/",
+                "provenances": {PROVENANCE: SOURCE_URL},
+            }
+        },
+    }
+    write_json(output_dir / "config.json", config)
+
+    # Graph schema follows the Custom Data Commons MCF variable definition.
+    mcf = '''Node: dcid:cbk/AnnualAverageInflationRate
+ typeOf: schema:StatisticalVariable
+ name: "Kenya annual average inflation rate (CBK)"
+ description: "CBK monthly published annual average consumer price inflation, in percent. This is the annual-average series, not the 12-month point-to-point series."
+ populationType: dcid:ConsumerGoodsAndServices
+ measuredProperty: dcid:consumerPriceIndex
+ statType: dcid:growthRate
+
+Node: dcid:cbk/TwelveMonthInflationRate
+ typeOf: schema:StatisticalVariable
+ name: "Kenya 12-month inflation rate (CBK)"
+ description: "CBK 12-month inflation: percent change in consumer prices relative to the same month of the preceding year."
+ populationType: dcid:ConsumerGoodsAndServices
+ measuredProperty: dcid:consumerPriceIndex
+ statType: dcid:growthRate
+ comparisonPeriod: dcid:YearOnChange
+'''
+    # Remove indentation before MCF properties (avoids importer parser differences).
+    mcf = "\n".join(line.lstrip() for line in mcf.splitlines()).rstrip() + "\n"
+    (output_dir / "variables.mcf").write_text(mcf, encoding="utf-8")
+
+    report = {
+        "source_csv": input_path.name,
+        "source_sha256": sha256,
+        "source_rows": len(records),
+        "distinct_months": len(kept),
+        "observation_rows": len(observations),
+        "variable_count": len(VARIABLES),
+        "first_month": min(kept),
+        "last_month": max(kept),
+        "identical_duplicate_rows_removed": len(duplicate_log),
+        "duplicate_details": duplicate_log,
+        "missing_months": missing_months,
+        "missing_value_details": missing_values,
+        "load_status": "NOT LOADED: Run the Data Commons Docker data container next.",
+    }
+    write_json(output_dir / "transformation_report.json", report)
+    print(f"Source records: {len(records)}")
+    print(f"Distinct months: {len(kept)} ({min(kept)} through {max(kept)})")
+    print(f"Identical duplicates ignored: {len(duplicate_log)}")
+    print(f"Missing months: {len(missing_months)}; missing values: {len(missing_values)}")
+    print(f"Observations written: {len(observations)}")
+    print(f"Files ready in: {output_dir}")
+    print("Next: load these files using the official Data Commons Docker container.")
+    return report
+
+
+if __name__ == "__main__":
+    cli = argparse.ArgumentParser(description=__doc__)
+    cli.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Previously extracted source CSV")
+    cli.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Output directory")
+    args = cli.parse_args()
+    generate(args.input, args.output)

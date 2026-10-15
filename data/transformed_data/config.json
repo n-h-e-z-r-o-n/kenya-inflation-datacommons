@@ -1,0 +1,18 @@
+{
+  "inputFiles": {
+    "observations.csv": {
+      "format": "variablePerRow",
+      "importType": "observations",
+      "entityType": "Country",
+      "provenance": "CBK_Inflation_Rates"
+    }
+  },
+  "sources": {
+    "Central Bank of Kenya": {
+      "url": "https://www.centralbank.go.ke/",
+      "provenances": {
+        "CBK_Inflation_Rates": "https://www.centralbank.go.ke/inflation-rates/"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+cd "C:\Users\user\Desktop\Kotlin Apps\kenya-inflation-datacommons"
+
+docker info
+
+$outputPath = (Resolve-Path ".\data\transformed_data").Path
+
+# Run Data Commons importer
+docker run --rm --platform linux/amd64 `
+  --env-file ".\env.list" `
+  --mount "type=bind,source=$outputPath,target=/data" `
+  gcr.io/datcom-ci/datacommons-data:stable `
+  2>&1 | Tee-Object -FilePath ".\data\transformed_data\load.log"
+
+# Display Docker exit code
+$LASTEXITCODE

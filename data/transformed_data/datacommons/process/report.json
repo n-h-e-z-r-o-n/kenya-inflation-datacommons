@@ -1,0 +1,17 @@
+{
+  "status": "SUCCESS",
+  "startTime": "2026-10-15 06:39:35.703002",
+  "lastUpdate": "2026-10-15 06:39:36.610468",
+  "importFiles": {
+    "/data/observations.csv": {
+      "status": "SUCCESS",
+      "startTime": "2026-10-15 06:39:35.723208",
+      "lastUpdate": "2026-10-15 06:39:36.488923"
+    },
+    "/data/variables.mcf": {
+      "status": "SUCCESS",
+      "startTime": "2026-10-15 06:39:36.489397",
+      "lastUpdate": "2026-10-15 06:39:36.498164"
+    }
+  }
+}

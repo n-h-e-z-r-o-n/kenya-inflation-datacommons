@@ -1,0 +1,16 @@
+Node: dcid:cbk/AnnualAverageInflationRate
+typeOf: schema:StatisticalVariable
+name: "Kenya annual average inflation rate (CBK)"
+description: "CBK monthly published annual average consumer price inflation, in percent. This is the annual-average series, not the 12-month point-to-point series."
+populationType: dcid:ConsumerGoodsAndServices
+measuredProperty: dcid:consumerPriceIndex
+statType: dcid:growthRate
+
+Node: dcid:cbk/TwelveMonthInflationRate
+typeOf: schema:StatisticalVariable
+name: "Kenya 12-month inflation rate (CBK)"
+description: "CBK 12-month inflation: percent change in consumer prices relative to the same month of the preceding year."
+populationType: dcid:ConsumerGoodsAndServices
+measuredProperty: dcid:consumerPriceIndex
+statType: dcid:growthRate
+comparisonPeriod: dcid:YearOnChange

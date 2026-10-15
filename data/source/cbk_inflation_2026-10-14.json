@@ -1,0 +1,9 @@
+{
+    "source": "Central Bank of Kenya",
+    "source_url": "https://www.centralbank.go.ke/inflation-rates/",
+    "downloaded_at_utc": "2026-10-14T16:29:53.942551+00:00",
+    "filename": "cbk_inflation_2026-10-14.html",
+    "sha256": "3203ae3ef0005f8226b1b82a0b947424ca25ff1e2c0b80b8dc1e809962cb9b08",
+    "http_status": 200,
+    "content_type": "text/html; charset=UTF-8"
+}
