@@ -1,22 +1,46 @@
-# To confirm the task  is reproducible, we need to run the entire pipeline twice using the same saved CBK webpage.
-# the second run must reuse the existing database, rather than deleting and recreating it.
+# Re-runnability
+# Pipeline Automation and Reproducibility
+# This script automates the entire CBK inflation data ingestion pipeline.
+# It runs data extraction, transformation, Docker import, and database verification.
+# It automatically executes the complete pipeline twice when Run is clicked in PyCharm.
+# Both runs use the same saved CBK webpage and the same SQLite database.
+# The second run verifies that no duplicate records or unexpected changes occur.
 
 
-"""Run the CBK -> Data Commons pipeline and verify reproducibility.
+# INPUT FILES:
+# - data/source/cbk_inflation_YYYY-MM-DD.html : Saved source webpage.
+# - env.list : Docker configuration and Data Commons API key.
 
-In PyCharm, click Run on this file with no parameters. By default, it:
-  1. Extracts and transforms the saved source, imports into SQLite, and verifies.
-  2. Repeats against the SAME SQLite database without deleting it.
-  3. Checks that the results and observation counts are unchanged.
 
-Optional terminal commands:
-    python run_pipeline.py                 # Both runs (default)
-    python run_pipeline.py --once          # Single run for debugging
-    python run_pipeline.py --from-scratch  # Back up database before first run
+# OUTPUT FOLDERS:
+# - data/ : Contains extracted source data.
+# - data/transformed_data/ : Contains generated Data Commons input files.
+# - data/transformed_data/datacommons/ : Contains the imported SQLite database.
+# - docs/ : Contains verification and reproducibility reports.
 
-Uses the saved CBK source snapshot to keep both runs comparable.
-Requires Docker Desktop and a private env.list with a Data Commons API key.
-"""
+# OUTPUT FILES:
+# - data/cbk_inflation_extracted.csv : Extracted inflation records.
+# - data/duplicate_rows.csv : Duplicate source records when detected.
+# - data/transformed_data/observations.csv : Formatted inflation observations.
+# - data/transformed_data/config.json : Data Commons import configuration.
+# - data/transformed_data/variables.mcf : Statistical variable definitions.
+# - data/transformed_data/transformation_report.json : Transformation summary.
+# - data/transformed_data/datacommons/datacommons.db : SQLite database.
+# - data/transformed_data/load.log : Docker import execution log.
+# - docs/readback_report.md : Data verification report.
+# - docs/reproducibility_report.md : Two-run reproducibility test results.
+
+
+# EXPECTED OUTPUT:
+# - First run: 282 observations, 0 duplicates, 0 differences.
+# - Second run: 282 observations, 0 duplicates, 0 differences.
+# - The second run does not delete or recreate the existing database.
+# - Displays REPRODUCIBILITY TEST: PASS when both runs succeed.
+
+
+# EXECUTION:
+# - Click Run in PyCharm or execute: python run_pipeline.py
+# - Requires Docker Desktop running and a valid Data Commons API key.
 
 from __future__ import annotations
 

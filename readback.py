@@ -1,8 +1,38 @@
 
-# The script reads your original CSV, the transformed CSV, and the actual SQLite database, then compares every inflation value.
 
+
+# Data Readback Verification
+
+# This script verifies that the inflation data loaded into Data Commons matches the original CBK data.
+# It reads the original extracted CSV, transformed observations CSV, and SQLite database.
+# It compares the number of records at each stage of the pipeline.
+# It checks that all imported inflation values match the original source data.
+# It detects missing observations, duplicate records, and incorrect values.
+# It reports any differences found between the source and the database.
+# It generates readback_report.md documenting the verification results.
+# It displays PASS when all observations match and FAIL when differences are detected.
+# It ensures data accuracy and integrity after the Data Commons import.
+# The script reads your original CSV, the transformed CSV, and the actual SQLite database, then compares every inflation value.
 # The script automatically generates: docs/readback_report.md
 
+
+# INPUT FILES:
+# - data/cbk_inflation_extracted.csv : Original extracted inflation data.
+# - data/transformed_data/observations.csv : Transformed observations.
+# - data/transformed_data/datacommons/datacommons.db : Imported SQLite database.
+
+# OUTPUT FOLDER:
+# - docs/ : Stores the generated verification report.
+
+# OUTPUT FILE:
+# - docs/readback_report.md : Detailed comparison and verification results.
+
+# EXPECTED OUTPUT:
+# - 142 original source rows and 141 unique months.
+# - 282 generated observations and 282 loaded database observations.
+# - Zero duplicate database observations.
+# - Zero differences between the source and imported values.
+# - Displays RESULT: PASS when all verification checks succeed.
 
 from __future__ import annotations
 

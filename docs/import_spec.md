@@ -1,34 +1,38 @@
 # Import Specification — Kenya Inflation Data Pipeline
 
-**Status:** Pre-import draft · **Scope:** Kenya only, monthly data from January 2015 onward, two variables.
+**Status:** Final; updated 15 October 2026 after implementation and testing.  
+**Scope:** Kenya, monthly inflation, January 2015–September 2026; two variables.
 
-## Source
+## Source and provenance
 
-- **Published by:** Central Bank of Kenya (CBK), [Inflation Rates](https://www.centralbank.go.ke/inflation-rates/). **Original producer:** Kenya National Bureau of Statistics (KNBS), credited by CBK.
-- **Saved source:** `source/cbk_inflation_2026-10-14.html` (date shown in the download log; verify its location and preserve the matching download metadata/checksum). The local copy is the reproducible source of truth.
-- **Updates:** Monthly. Historical figures may be revised; save each new download separately and compare snapshots.
-- **Licence:** No explicit reuse licence was verified for this table. Credit CBK/KNBS and check redistribution permissions before publishing the source copy publicly.
+- **Publisher:** [Central Bank of Kenya — Inflation Rates](https://www.centralbank.go.ke/inflation-rates/); the page credits the **Kenya National Bureau of Statistics (KNBS)** as the original data source.
+- **Archived source:** `data/source/cbk_inflation_2026-10-14.html`; its download timestamp, URL, and SHA-256 checksum are recorded in the accompanying `.json` file. Re-runs use this saved snapshot.
+- **Frequency/revisions:** CBK updates the table monthly. Preserve a separate dated snapshot for future updates and review historical changes; automated revision comparison is not yet implemented.
+- **Licence:** No explicit reuse licence was verified. Credit CBK/KNBS and confirm redistribution permissions before publicly sharing the archived webpage.
 
 ## Mapping and units
 
-| Source column | Data Commons field | Meaning |
+| CBK field | Data Commons mapping | Meaning |
 |---|---|---|
-| `Year` + `Month` | `date` (`YYYY-MM`) | Reporting month |
-| `Annual Average Inflation` | `variable`: `cbk/AnnualAverageInflationRate` | Percentage change in annual-average CPI for corresponding periods |
-| `12-Month Inflation` | `variable`: `cbk/TwelveMonthInflationRate` | CPI percentage change from the same month of the prior year |
+| `Year` + `Month` | `date = YYYY-MM` | Reporting month; exclude pre-2015 data. |
+| `Annual Average Inflation` | `cbk/AnnualAverageInflationRate` | Change in annual-average CPI for corresponding periods; published each month. |
+| `12-Month Inflation` | `cbk/TwelveMonthInflationRate` | Change in monthly CPI versus the same month a year earlier. |
+| All rows | `entity = country/KEN` | Existing national place identifier. |
 
-- **Place:** All observations use the existing Data Commons identifier `country/KEN` (`entity`). No new place is defined.
-- **Unit:** Both variables use `Percent`. Preserve CBK figures exactly: a published `5.53` becomes `5.53` (not `0.0553`). The annual-average measure is reported **each month**.
-- **Unique key:** `(entity, variable, date)`; at most one value for each key.
-- **Loader files:** `output/observations.csv` with `entity,variable,date,value,unit`; `output/variables.mcf` defines the two variables; `output/config.json` supplies file mapping and provenance.
+Both variables have **unit `Percent`**: source `5.53` remains `5.53`, not `0.0553`. One observation is allowed per `(entity, variable, date)`.
 
-## Validation and edge cases
+**Loader inputs:** `data/transformed_data/observations.csv` (`entity,variable,date,value,unit`); `variables.mcf` (statistical variable definitions); `config.json` (`variablePerRow`, `importType: observations`, provenance `CBK_Inflation_Rates`). **Output database:** `data/transformed_data/datacommons/datacommons.db`.
 
-1. **Scope/gaps:** Exclude pre-2015 records. Flag missing months; do not invent values or dates.
-2. **Missing values:** Preserve missingness, never substitute `0`. Omit non-numeric observations from the loader CSV and report them. Reject unexpected text for review.
-3. **Duplicates:** Detect repeated year/month keys. Collapse **identical** rows only with an audit log; if figures conflict, stop rather than guess. The live CBK table repeats April 2019; confirm this in the saved snapshot.
-4. **Footnotes:** Record and investigate annotations instead of silently discarding them; do not infer modified figures.
-5. **Revisions:** Keep original dated snapshots and report any changed historical values on later runs.
-6. **Readback:** Compare source, generated CSV, and SQLite counts; check every loaded `(entity, variable, date, value)` against values parsed by code from the saved source. List and explain every difference.
+## Data-quality policy and source notes
 
-**Tools and traceability:** Python for extraction/transformation/validation; official Data Commons Docker data container for SQLite loading. Record any AI assistance, and verify its output independently. Follow the [Data Commons custom data documentation](https://docs.datacommons.org/custom_dc/custom_data.html).
+- **Missing dates:** Flag gaps; never generate fictional months. No missing months were found.
+- **Missing figures:** Omit recognized missing values from loader observations and report them; never use zero. Reject unexpected text/non-finite figures. No missing inflation values were found.
+- **Duplicates:** Keep one copy of an identical repeated month and log the discarded row; stop if figures conflict. **April 2019** appeared twice with the same annual-average (**4.91**) and 12-month (**6.58**) rates; one copy was ignored.
+- **Footnotes:** CBK's saved webpage contains explanatory notes defining both inflation measures and crediting KNBS. Preserve these notes with the original HTML; investigate any annotations in data cells instead of silently changing values.
+- **Revisions:** Keep original snapshots; any changes in later publications require explicit review.
+
+## Import verification
+
+The extract contained **142 rows** and **141 distinct months**. Transformation generated **282 observations** (141 months × 2 variables). SQLite readback matched all **282** values, with **0 differences or duplicate dataset observations**. Two successive pipeline runs against the saved source also passed with **282 observations, 0 duplicates, 0 differences**. See `docs/readback_report.md` and the locally generated reproducibility report. Numeric readback does not independently validate all database metadata/facets.
+
+**Tools:** Python, BeautifulSoup/pandas, official Data Commons Docker container, SQLite; AI-assisted guidance and documentation were checked through executable validation and readback. Full notes: `docs/handover.md` and `docs/learning_log.md`.

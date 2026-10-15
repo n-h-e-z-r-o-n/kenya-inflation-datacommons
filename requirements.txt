@@ -1,4 +1,6 @@
-pandas
 requests
-pip install lxml
-python -m pip install requests pandas beautifulsoup4 lxml html5lib pytest
+pandas
+beautifulsoup4
+lxml
+html5lib
+pytest

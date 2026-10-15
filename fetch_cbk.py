@@ -1,18 +1,35 @@
+# Data Extraction
+#
 # Central Bank of Kenya url:  https://www.centralbank.go.ke/inflation-rates/
 # Instead of manually copying the table, this scripts  downloads it programmatically. This gives us a reproducible record of where the data came from.
+# This script downloads monthly inflation data from the Central Bank of Kenya (CBK).
+# It saves a dated copy of the original webpage (HTML) for reference and verification.
+# It extracts inflation records from January 2015 onwards using BeautifulSoup.
+# It organizes the extracted data into a structured format using pandas.
+# It checks for duplicate records, missing months, missing values, and invalid data.
+# It preserves duplicate records in a separate CSV file for investigation.
+# It generates cbk_inflation_extracted.csv containing the extracted inflation data.
+# It also saves download metadata, including the source URL, date, and file checksum.
+# The extracted CSV is used by transform.py to prepare the data for Data Commons.
 
-"""
-This Python script  automatically downloads inflation data from the Central Bank of Kenya, extracts the
-relevant figures using BeautifulSoup, validates the data for duplicates and missing values, and uses pandas to export
-it into a structured CSV file. I also preserve the original source for traceability and verification
 
-cript generates two CSV files:
-1. cbk_inflation_extracted.csv — Contains all inflation data extracted from the Central Bank of Kenya, starting from January 2015.
-    It includes the year, month, annual average inflation, and 12-month inflation rates.
-2. duplicate_rows.csv — Contains records where the same month and year appear more than once.
- It helps us identify duplicate data that needs investigation before importing it into Data Commons.
- This file is created only when duplicates are detected.
-"""
+# OUTPUT FOLDERS:
+# - data/source/ : Stores the original downloaded webpage and its metadata.
+# - data/        : Stores the extracted inflation data.
+
+
+# OUTPUT FILES:
+# - data/source/cbk_inflation_YYYY-MM-DD.html : Original downloaded webpage.
+# - data/source/cbk_inflation_YYYY-MM-DD.json : Download metadata and file checksum.
+# - data/cbk_inflation_extracted.csv : Extracted inflation dataset.
+# - data/duplicate_rows.csv : Duplicate records (created only when duplicates exist).
+
+
+# EXPECTED OUTPUT:
+# - 142 source records, including the identical April 2019 duplicate.
+# - No missing months or inflation values in the current source snapshot.
+# - The extracted CSV is passed to transform.py for further processing.
+
 import calendar
 import hashlib
 import json
